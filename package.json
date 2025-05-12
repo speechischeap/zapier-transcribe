@@ -15,5 +15,5 @@
     "build": "npm run clean && tsc",
     "clean": "rimraf ./dist ./build"
   },
-  "version": "0.1.0"
+  "version": "1.0.0"
 }
