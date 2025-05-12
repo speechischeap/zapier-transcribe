@@ -189,7 +189,7 @@ export default {
       key: 'copy',
       type: 'copy',
     }, {
-      helpText: "API token for Speech is Cheap.\nDon't have one? Sign up at https://speechischeap.com",
+      helpText: "API token for Speech is Cheap.\nDon't have one? Sign up at [speechischeap.com](https://speechischeap.com)",
       key: 'token',
       required: true,
       type: 'password',
