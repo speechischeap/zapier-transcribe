@@ -1,21 +1,19 @@
 {
-  "name": "transcribe",
-  "version": "1.0.0",
-  "description": "",
-  "main": "src/index.js",
-  "scripts": {
-    "test": "vitest",
-    "clean": "rimraf ./dist ./build",
-    "build": "npm run clean && tsc",
-    "_zapier-build": "npm run build"
-  },
   "dependencies": {
     "zapier-platform-core": "16.5.0"
   },
+  "description": "",
   "devDependencies": {
-    "vitest": "^2.1.2",
     "rimraf": "^5.0.10",
     "typescript": "5.6.2"
   },
-  "private": true
+  "main": "src/index.js",
+  "name": "transcribe",
+  "private": true,
+  "scripts": {
+    "_zapier-build": "npm run build",
+    "build": "npm run clean && tsc",
+    "clean": "rimraf ./dist ./build"
+  },
+  "version": "0.1.0"
 }
