@@ -79,7 +79,6 @@ const perform: PerformFunction = async (z, bundle) => {
 
   // Remove unexpected fields from the API payload:
   delete payload.can_include_json;
-  delete payload.token;
 
   // Validate payload:
   const validationErrors: string[] = [];
@@ -119,7 +118,7 @@ const perform: PerformFunction = async (z, bundle) => {
   try {
     apiResponse = await z.request({
       body: payload,
-      headers: { Authorization: `Bearer ${bundle.inputData.token}` },
+      headers: { Authorization: `Bearer ${bundle.authData.token}` },
       method: 'POST',
       url: 'https://api.speechischeap.com/v2/jobs/',
     });
@@ -188,11 +187,6 @@ export default {
       helpText: "The input URL depends on where the file is stored. Please [see the docs](https://docs.speechischeap.com/integrations/zapier) if you need additional help.",
       key: 'copy',
       type: 'copy',
-    }, {
-      helpText: "API token for Speech is Cheap.\nDon't have one? Sign up at [speechischeap.com](https://speechischeap.com)",
-      key: 'token',
-      required: true,
-      type: 'password',
     }, {
       helpText: 'Input URL of the audio file to transcribe.',
       key: 'input_url',

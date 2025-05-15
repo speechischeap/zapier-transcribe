@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Authentication mechanism as required by Zapier
+
 ### Changed
 
 - Sample transcript text to make it more clear that it's a sample
