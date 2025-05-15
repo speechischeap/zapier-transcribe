@@ -59,7 +59,7 @@ const sampleTranscript: TranscriptionJob = {
         processing_duration_in_s: 0.321,
         seek: 1234.5,
         start: 1.234,
-        text: 'This is an example of some transcribed text output.',
+        text: 'SAMPLE. Publish Zap for the real transcription.',
         words: null
       }
     ]
@@ -68,7 +68,7 @@ const sampleTranscript: TranscriptionJob = {
 
 const sampleTranscriptWords = [{
   end: 1.345,
-  text: 'This',
+  text: 'SAMPLE.',
   start: 1.234,
 }];
 
