@@ -5,7 +5,7 @@ Zapier integration for the Cloudflare Transcriber
 ## Develop
 
 1. Bump the version in `package.json`
-1. Run `zapier push`
+1. Run `zapier-platform push`
     - Verify that the integration is deployed [on this page](https://developer.zapier.com/)
 1. Test the integration on Zapier
     - Start on [the Zaps page](https://zapier.com/app/assets/zaps)
@@ -20,5 +20,5 @@ Note that the test will return the `sampleTranscript` object [per these docs](ht
 ## Deploy
 
 ```sh
-zapier push
+zapier-platform push
 ```

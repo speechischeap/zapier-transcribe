@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Run on Node.js 22 by upgrading `zapier-platform-core` to 19.2.1
+
+### Fixed
+
+- Halt the Zap instead of failing it when the audio is shorter than six seconds, so Autoreplay doesn't resend it
+
 ## [1.1.0] - 2025-05-15
 
 ### Added
