@@ -159,6 +159,11 @@ const performResume: PerformFunction = async (z, bundle) => {
   if (status === 'FAILED') {
     const message = (finalJobResponse.output as TranscriptionOutputOnError)?.error || 'Transcription job failed with an unknown error';
 
+    // Audio under the minimum duration can never succeed, so halt instead of letting Autoreplay resend it:
+    if (/^Expected at least \d+ seconds/.test(message)) {
+      throw new z.errors.HaltedError(message);
+    }
+
     throw new z.errors.Error(message, 'TranscriptionError', 400);
   }
 
