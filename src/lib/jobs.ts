@@ -119,3 +119,57 @@ export const sampleJob = ({ labels, request, speakers, words }: SampleOptions): 
     }],
   },
 });
+
+const BOOLEAN_FIELDS = ['can_label_audio', 'can_parse_speakers', 'can_parse_words', 'is_private', 'is_split_channel'];
+
+const isBlank = (value: unknown) => value === undefined || value === null || value === '';
+
+export interface JobRequest {
+  errors: string[];
+  request: Record<string, unknown>;
+}
+
+/**
+ * Picks the Jobs API fields out of a step's input. Blank fields are left out so the API applies its
+ * own defaults, and settings that only shape the step's output never reach the API.
+ */
+export const buildJobRequest = (inputData: Record<string, unknown>): JobRequest => {
+  const errors: string[] = [];
+  const request: Record<string, unknown> = {};
+
+  if (!isBlank(inputData.input_url)) {
+    request.input_url = String(inputData.input_url).trim();
+  }
+
+  if (!isBlank(inputData.language)) {
+    request.language = String(inputData.language).trim();
+  }
+
+  for (const key of BOOLEAN_FIELDS) {
+    if (!isBlank(inputData[key])) {
+      request[key] = inputData[key] === true || inputData[key] === 'true';
+    }
+  }
+
+  if (!isBlank(inputData.minimum_confidence)) {
+    const confidence = Number(inputData.minimum_confidence);
+
+    if (!(confidence >= 0 && confidence <= 1)) {
+      errors.push('- Minimum confidence must be between 0.0 and 1.0 (inclusive).');
+    }
+
+    request.minimum_confidence = confidence;
+  }
+
+  if (!isBlank(inputData.segment_duration)) {
+    const duration = Number(inputData.segment_duration);
+
+    if (!(duration >= 6 && duration <= 30)) {
+      errors.push('- Segment duration must be between 6 and 30 seconds (inclusive).');
+    }
+
+    request.segment_duration = duration;
+  }
+
+  return { errors, request };
+};

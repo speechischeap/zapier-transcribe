@@ -5,14 +5,13 @@ import type {
 } from 'zapier-platform-core';
 
 import { subtitleFile } from '../hydrators';
+import { LANGUAGES } from '../lib/languages';
 import {
+  buildJobRequest,
   describeTranscription,
   type Job,
   sampleJob,
 } from '../lib/jobs';
-
-// Settings that shape the Zap step's output but mean nothing to the Jobs API:
-const OUTPUT_OPTIONS = ['can_include_json', 'can_include_timestamps'];
 
 // Failure messages from https://docs.speechischeap.com/errors/ that the same input would always trigger again:
 const PERMANENT_FAILURES = [
@@ -29,42 +28,25 @@ const describeOptions = (z: ZObject, inputData: Record<string, unknown>) => ({
 });
 
 const perform: PerformFunction = async (z, bundle) => {
-  const payload: typeof bundle.inputData = { ...bundle.inputData };
+  const { errors, request } = buildJobRequest(bundle.inputData);
 
-  for (const option of OUTPUT_OPTIONS) {
-    delete payload[option];
-  }
-
-  // Validate payload:
-  const validationErrors: string[] = [];
-
-  if (payload.segment_duration < 6 || payload.segment_duration > 30) {
-    validationErrors.push('- Segment duration must be between 6 and 30 seconds (inclusive).');
-  }
-
-  if (payload.minimum_confidence < 0 || payload.minimum_confidence > 1) {
-    validationErrors.push('- Minimum confidence must be between 0.0 and 1.0 (inclusive).');
-  }
-
-  if (validationErrors.length) {
-    throw new z.errors.Error(validationErrors.join('\n'), 'TranscriptionConfigurationError', 400);
+  if (errors.length) {
+    throw new z.errors.Error(errors.join('\n'), 'TranscriptionConfigurationError', 400);
   }
 
   if (bundle.meta.isLoadingSample) {
     const job = sampleJob({
-      labels: Boolean(payload.can_label_audio),
-      request: payload,
-      speakers: Boolean(payload.can_parse_speakers),
-      words: Boolean(payload.can_parse_words),
+      labels: Boolean(request.can_label_audio),
+      request,
+      speakers: Boolean(request.can_parse_speakers || request.is_split_channel),
+      words: Boolean(request.can_parse_words),
     });
 
     return describeTranscription(job, describeOptions(z, bundle.inputData));
   }
 
-  payload.webhook_url = z.generateCallbackUrl();
-
   const apiResponse = await z.request({
-    body: payload,
+    body: { ...request, webhook_url: z.generateCallbackUrl() },
     method: 'POST',
     url: 'https://api.speechischeap.com/v2/jobs/',
   });
@@ -121,6 +103,8 @@ export default {
   },
 
   operation: {
+    // `buildJobRequest` drops blank fields itself, so Zapier need not clean them (check D028):
+    cleanInputData: false,
     perform,
     performResume,
     sample: describeTranscription(
@@ -139,6 +123,8 @@ export default {
       { key: 'output__duration', label: 'Duration in Seconds', type: 'number' },
     ],
 
+    inputFieldGroups: [{ emphasize: false, key: 'advanced', label: 'Advanced Options' }],
+
     inputFields: [{
       helpText: "The input URL depends on where the file is stored. Please [see the docs](https://docs.speechischeap.com/integrations/zapier) if you need additional help.",
       key: 'copy',
@@ -149,6 +135,13 @@ export default {
       label: 'Input URL',
       placeholder: 'https://example.com/audio.mp3',
       required: true,
+      type: 'string',
+    }, {
+      choices: LANGUAGES,
+      helpText: 'Select one of 100 languages to apply it to all segments. Leave blank to detect language automatically for each segment.',
+      key: 'language',
+      label: 'Language',
+      required: false,
       type: 'string',
     }, {
       default: 'false',
@@ -175,19 +168,36 @@ export default {
       label: 'Include Timestamps in Transcript?',
       type: 'boolean',
     }, {
+      default: 'false',
+      group: 'advanced',
+      helpText: 'When enabled, treats each audio channel as its own speaker, such as in a stereo call recording. Works without speaker parsing.',
+      key: 'is_split_channel',
+      label: 'Split Channels?',
+      type: 'boolean',
+    }, {
+      default: 'false',
+      group: 'advanced',
+      helpText: "When enabled, hides the input URL and deletes the transcript from Speech is Cheap's servers 12 hours after completion. Your Zap step still receives the full result.",
+      key: 'is_private',
+      label: 'Keep Transcription Private?',
+      type: 'boolean',
+    }, {
       default: '0.5',
+      group: 'advanced',
       helpText: "Filter out segments that fall below this confidence threshold. Applies both to transcriptions and to non-speech audio labels when `can_label_audio` is `true`.",
       key: 'minimum_confidence',
       label: 'Minimum Confidence Threshold (0.0 - 1.0)',
       type: 'number',
     }, {
       default: '30',
+      group: 'advanced',
       helpText: 'Duration of each transcription segment in seconds. Must be between six and 30 seconds.',
       key: 'segment_duration',
       label: 'Segment Duration in Seconds (6 - 30)',
       type: 'integer',
     }, {
       default: 'false',
+      group: 'advanced',
       helpText: "Override Zapier's default behavior and include the raw JSON response in the output.",
       key: 'can_include_json',
       label: 'Include JSON in Output?',
