@@ -1,17 +1,23 @@
 import type {
   Create,
   PerformFunction,
-  ZObject,
 } from 'zapier-platform-core';
 
-import { subtitleFile } from '../hydrators';
-import { LANGUAGES } from '../lib/languages';
+import {
+  advancedGroup,
+  describeOptionsFor,
+  jsonField,
+  timestampsField,
+  transcriptionOutputFields,
+  transcriptionSample,
+} from '../lib/fields';
 import {
   buildJobRequest,
   describeTranscription,
   type Job,
   sampleJob,
 } from '../lib/jobs';
+import { LANGUAGES } from '../lib/languages';
 
 // Failure messages from https://docs.speechischeap.com/errors/ that the same input would always trigger again:
 const PERMANENT_FAILURES = [
@@ -20,12 +26,6 @@ const PERMANENT_FAILURES = [
   /does not appear in the list of supported languages/,
   /^'minimum_confidence' must be between/,
 ];
-
-const describeOptions = (z: ZObject, inputData: Record<string, unknown>) => ({
-  includeJson: Boolean(inputData.can_include_json),
-  subtitleFileFor: (id: string) => z.dehydrateFile(subtitleFile, { id }),
-  timestamps: Boolean(inputData.can_include_timestamps),
-});
 
 const perform: PerformFunction = async (z, bundle) => {
   const { errors, request } = buildJobRequest(bundle.inputData);
@@ -42,7 +42,7 @@ const perform: PerformFunction = async (z, bundle) => {
       words: Boolean(request.can_parse_words),
     });
 
-    return describeTranscription(job, describeOptions(z, bundle.inputData));
+    return describeTranscription(job, describeOptionsFor(z, bundle.inputData));
   }
 
   const apiResponse = await z.request({
@@ -71,7 +71,7 @@ const performResume: PerformFunction = async (z, bundle) => {
   const { status } = job;
 
   if (status === 'COMPLETED') {
-    return describeTranscription(job, describeOptions(z, bundle.inputData));
+    return describeTranscription(job, describeOptionsFor(z, bundle.inputData));
   }
 
   if (status === 'FAILED') {
@@ -107,23 +107,10 @@ export default {
     cleanInputData: false,
     perform,
     performResume,
-    sample: describeTranscription(
-      sampleJob({ labels: false, request: {}, speakers: false, words: false }),
-      { includeJson: false, subtitleFileFor: () => 'https://example.com/transcript.srt', timestamps: false },
-    ) as unknown as { [k: string]: unknown },
+    sample: transcriptionSample,
+    outputFields: transcriptionOutputFields,
 
-    outputFields: [
-      { key: 'id', label: 'Transcription ID' },
-      { key: 'status', label: 'Status' },
-      { key: 'text', label: 'Transcript' },
-      { key: 'srt', label: 'SRT Subtitles' },
-      { key: 'vtt', label: 'VTT Subtitles' },
-      { key: 'srt_file', label: 'SRT File', type: 'file' },
-      { key: 'language', label: 'Detected Language' },
-      { key: 'output__duration', label: 'Duration in Seconds', type: 'number' },
-    ],
-
-    inputFieldGroups: [{ emphasize: false, key: 'advanced', label: 'Advanced Options' }],
+    inputFieldGroups: [advancedGroup],
 
     inputFields: [{
       helpText: "The input URL depends on where the file is stored. Please [see the docs](https://docs.speechischeap.com/integrations/zapier) if you need additional help.",
@@ -161,13 +148,7 @@ export default {
       key: 'can_label_audio',
       label: 'Can Label Audio?',
       type: 'boolean',
-    }, {
-      default: 'false',
-      helpText: 'When enabled, adds a timestamp such as [0:04] to the start of each line in the Transcript.',
-      key: 'can_include_timestamps',
-      label: 'Include Timestamps in Transcript?',
-      type: 'boolean',
-    }, {
+    }, timestampsField, {
       default: 'false',
       group: 'advanced',
       helpText: 'When enabled, treats each audio channel as its own speaker, such as in a stereo call recording. Works without speaker parsing.',
@@ -195,13 +176,6 @@ export default {
       key: 'segment_duration',
       label: 'Segment Duration in Seconds (6 - 30)',
       type: 'integer',
-    }, {
-      default: 'false',
-      group: 'advanced',
-      helpText: "Override Zapier's default behavior and include the raw JSON response in the output.",
-      key: 'can_include_json',
-      label: 'Include JSON in Output?',
-      type: 'boolean',
-    }],
+    }, jsonField],
   },
 } satisfies Create;
