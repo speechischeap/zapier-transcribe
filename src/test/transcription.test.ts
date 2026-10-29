@@ -55,6 +55,19 @@ afterEach(() => {
 });
 
 describe('Transcribe Audio: input fields', () => {
+  const fields = transcription.inputFields as Array<{ choices?: unknown[]; group?: string; key: string }>;
+
+  it('offers a language dropdown and tucks the fine-tuning settings into Advanced Options', () => {
+    expect(fields.find(({ key }) => key === 'language')?.choices).toHaveLength(100);
+    expect(fields.filter(({ group }) => group === 'advanced').map(({ key }) => key)).toEqual([
+      'is_split_channel',
+      'is_private',
+      'minimum_confidence',
+      'segment_duration',
+      'can_include_json',
+    ]);
+  });
+
   it('no longer offers the inputs the Jobs API dropped in 2.8.0', () => {
     const keys = (transcription.inputFields as Array<{ key: string }>).map((field) => field.key);
 
@@ -82,6 +95,40 @@ describe('Transcribe Audio: perform', () => {
     expect(sentBody).toMatchObject({ ...defaultInput, webhook_url: CALLBACK_URL });
     expect(sentBody).not.toHaveProperty('can_include_json');
     expect(sentBody).not.toHaveProperty('can_include_timestamps');
+  });
+
+  it('sends the language, privacy, and channel settings, and nothing blank', async () => {
+    let sentBody: Record<string, unknown> = {};
+
+    nock(API)
+      .post('/v2/jobs/', (body) => {
+        sentBody = body;
+        return true;
+      })
+      .reply(202, { id: JOB_ID, output: {}, status: 'PENDING' });
+
+    await appTester(transcription.perform, bundleWith({
+      inputData: {
+        ...defaultInput,
+        can_include_timestamps: '',
+        is_private: true,
+        is_split_channel: true,
+        language: 'fr',
+        segment_duration: '',
+      },
+    }));
+
+    expect(sentBody).toEqual({
+      can_label_audio: false,
+      can_parse_speakers: false,
+      can_parse_words: false,
+      input_url: defaultInput.input_url,
+      is_private: true,
+      is_split_channel: true,
+      language: 'fr',
+      minimum_confidence: 0.5,
+      webhook_url: CALLBACK_URL,
+    });
   });
 
   it.each([
