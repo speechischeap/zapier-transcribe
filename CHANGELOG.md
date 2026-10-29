@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Show the API's own error message instead of a JSON dump when a request fails
 - Halt the Zap instead of failing it when the audio is over 24 hours, the language is unsupported, the confidence threshold is out of range, or someone canceled the transcription
 
 ## [1.2.0] - 2026-10-27

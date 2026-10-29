@@ -3,6 +3,7 @@ import zapier from 'zapier-platform-core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import App from '../index';
+import { messageOf, rejectionOf } from './helpers';
 
 const appTester = zapier.createAppTester(App);
 
@@ -90,7 +91,6 @@ describe('Transcribe Audio: perform', () => {
   ])('rejects invalid settings %o before calling the API', async (override, message) => {
     await expect(
       appTester(transcription.perform, bundleWith({
-        authData: { token: 'sk_test' },
         inputData: { ...defaultInput, ...override },
       })),
     ).rejects.toThrow(message);
@@ -101,12 +101,11 @@ describe('Transcribe Audio: perform', () => {
       .post('/v2/jobs/')
       .reply(400, 'Input URL is not reachable: https://example.com/audio.mp3 (HTTP 404)');
 
-    await expect(
-      appTester(transcription.perform, bundleWith({
-        authData: { token: 'sk_test' },
-        inputData: defaultInput,
-      })),
-    ).rejects.toThrow('Input URL is not reachable');
+    const error = await rejectionOf(appTester(transcription.perform, bundleWith({
+      inputData: defaultInput,
+    })));
+
+    expect(messageOf(error)).toBe('Input URL is not reachable: https://example.com/audio.mp3 (HTTP 404)');
   });
 
   it('fails when the API accepts the job without an ID', async () => {
@@ -114,7 +113,6 @@ describe('Transcribe Audio: perform', () => {
 
     await expect(
       appTester(transcription.perform, bundleWith({
-        authData: { token: 'sk_test' },
         inputData: defaultInput,
       })),
     ).rejects.toThrow('no job ID was returned');
