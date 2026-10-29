@@ -70,6 +70,14 @@ const sampleTranscriptWords = [{
   start: 1.234,
 }];
 
+// Failure messages from https://docs.speechischeap.com/errors/ that the same input would always trigger again:
+const PERMANENT_FAILURES = [
+  /^Expected at least [\d.]+ seconds/,
+  /^Expected at most [\d.]+ seconds/,
+  /does not appear in the list of supported languages/,
+  /^'minimum_confidence' must be between/,
+];
+
 const perform: PerformFunction = async (z, bundle) => {
   let apiResponse: HttpResponse<any>;
 
@@ -157,16 +165,17 @@ const performResume: PerformFunction = async (z, bundle) => {
   if (status === 'FAILED') {
     const message = (finalJobResponse.output as TranscriptionOutputOnError)?.error || 'Transcription job failed with an unknown error';
 
-    // Audio under the minimum duration can never succeed, so halt instead of letting Autoreplay resend it:
-    if (/^Expected at least \d+ seconds/.test(message)) {
+    // A permanent failure would fail again with the same input, so halt instead of letting Autoreplay resend it:
+    if (PERMANENT_FAILURES.some((pattern) => pattern.test(message))) {
       throw new z.errors.HaltedError(message);
     }
 
     throw new z.errors.Error(message, 'TranscriptionError', 400);
   }
 
+  // Someone canceled the transcription on purpose, so a replay would only undo their decision:
   if (status === 'CANCELED') {
-    throw new z.errors.Error('Transcription job was canceled', 'TranscriptionError', 400);
+    throw new z.errors.HaltedError('The transcription was canceled before it finished.');
   }
 
   throw new z.errors.Error(`Received unexpected job status from webhook: ${status}`, 'WebhookError', 400);

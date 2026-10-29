@@ -153,20 +153,21 @@ describe('Transcribe Audio: performResume', () => {
     expect(JSON.parse(result.json)).toMatchObject({ id: JOB_ID });
   });
 
-  it('halts the Zap when the audio is too short', async () => {
+  it.each([
+    'Expected at least 6 seconds; got 2.5 seconds',
+    'Expected at most 86400 seconds; got at least 90000 seconds',
+    'The input language ("xx") does not appear in the list of supported languages: af, am, ar',
+    "'minimum_confidence' must be between 0.0 and 1.0.",
+  ])('halts the Zap on a permanent failure: %s', async (error) => {
     await expect(
       appTester(transcription.performResume!, bundleWith({
-        cleanedRequest: {
-          id: JOB_ID,
-          output: { error: 'Expected at least 6 seconds; got 2.5 seconds' },
-          status: 'FAILED',
-        },
+        cleanedRequest: { id: JOB_ID, output: { error }, status: 'FAILED' },
         inputData: defaultInput,
       })),
-    ).rejects.toMatchObject({ name: 'HaltedError' });
+    ).rejects.toMatchObject({ message: expect.stringContaining(error), name: 'HaltedError' });
   });
 
-  it('fails the step for other failures', async () => {
+  it('fails the step, so Autoreplay can retry, for other failures', async () => {
     await expect(
       appTester(transcription.performResume!, bundleWith({
         cleanedRequest: {
@@ -179,12 +180,12 @@ describe('Transcribe Audio: performResume', () => {
     ).rejects.toThrow('FFmpeg process returned non-zero exit code 1.');
   });
 
-  it('fails the step when the job was canceled', async () => {
+  it('halts the Zap when someone canceled the transcription', async () => {
     await expect(
       appTester(transcription.performResume!, bundleWith({
         cleanedRequest: { id: JOB_ID, output: {}, status: 'CANCELED' },
         inputData: defaultInput,
       })),
-    ).rejects.toThrow('Transcription job was canceled');
+    ).rejects.toMatchObject({ name: 'HaltedError' });
   });
 });

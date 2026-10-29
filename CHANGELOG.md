@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING**: Hotwords and Prompt inputs, which the Jobs API dropped in 2.8.0
 
+### Fixed
+
+- Halt the Zap instead of failing it when the audio is over 24 hours, the language is unsupported, the confidence threshold is out of range, or someone canceled the transcription
+
 ## [1.2.0] - 2026-10-27
 
 ### Changed
