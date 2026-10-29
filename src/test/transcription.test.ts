@@ -215,6 +215,16 @@ describe('Transcribe Audio: performResume', () => {
     expect(result.srt_file).toContain(JOB_ID);
   });
 
+  it('reads the string "false" that performResume can receive as no', async () => {
+    const result = await appTester(transcription.performResume!, bundleWith({
+      cleanedRequest: structuredClone(completedJob),
+      inputData: { ...defaultInput, can_include_json: 'false', can_include_timestamps: 'false' },
+    }));
+
+    expect(result.text).toBe('Hello there.');
+    expect(result).not.toHaveProperty('json');
+  });
+
   it('adds timestamps to the transcript when asked to', async () => {
     const result = await appTester(transcription.performResume!, bundleWith({
       cleanedRequest: structuredClone(completedJob),

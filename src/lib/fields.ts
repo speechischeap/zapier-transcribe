@@ -1,15 +1,15 @@
 import type { ZObject } from 'zapier-platform-core';
 
 import { subtitleFile } from '../hydrators';
-import { type DescribeOptions, describeTranscription, sampleJob } from './jobs';
+import { type DescribeOptions, describeTranscription, isTrue, sampleJob } from './jobs';
 
 // Field definitions and samples shared by every step that returns a Transcription, so that
 // Transcribe Audio and Find Transcription offer the same fields to later steps.
 
 export const describeOptionsFor = (z: ZObject, inputData: Record<string, unknown>): DescribeOptions => ({
-  includeJson: Boolean(inputData.can_include_json),
+  includeJson: isTrue(inputData.can_include_json),
   subtitleFileFor: (id: string) => z.dehydrateFile(subtitleFile, { id }),
-  timestamps: Boolean(inputData.can_include_timestamps),
+  timestamps: isTrue(inputData.can_include_timestamps),
 });
 
 export const timestampsField = {

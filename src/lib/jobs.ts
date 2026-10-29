@@ -122,7 +122,13 @@ export const sampleJob = ({ labels, request, speakers, words }: SampleOptions): 
 
 const BOOLEAN_FIELDS = ['can_label_audio', 'can_parse_speakers', 'can_parse_words', 'is_private', 'is_split_channel'];
 
-const isBlank = (value: unknown) => value === undefined || value === null || value === '';
+// Zapier sends typed values to `perform` but strings to `performResume`, and mapped values from
+// earlier steps can be any text. Read every input through these two helpers.
+export const isBlank = (value: unknown): boolean =>
+  value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+
+export const isTrue = (value: unknown): boolean =>
+  value === true || value === 1 || (typeof value === 'string' && /^(true|yes|1|on)$/i.test(value.trim()));
 
 export interface JobRequest {
   errors: string[];
@@ -154,12 +160,13 @@ export const buildJobRequest = (inputData: Record<string, unknown>): JobRequest 
   }
 
   if (!isBlank(inputData.language)) {
-    request.language = String(inputData.language).trim();
+    // The API expects lowercase codes and only rejects an unknown one after the job starts:
+    request.language = String(inputData.language).trim().toLowerCase();
   }
 
   for (const key of BOOLEAN_FIELDS) {
     if (!isBlank(inputData[key])) {
-      request[key] = inputData[key] === true || inputData[key] === 'true';
+      request[key] = isTrue(inputData[key]);
     }
   }
 

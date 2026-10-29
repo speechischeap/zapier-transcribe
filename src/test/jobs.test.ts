@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildJobRequest } from '../lib/jobs';
+import { buildJobRequest, isTrue } from '../lib/jobs';
 import { LANGUAGES } from '../lib/languages';
 
 describe('buildJobRequest', () => {
@@ -75,5 +75,27 @@ describe('buildJobRequest inputs', () => {
     expect(errors).toEqual([]);
     expect(request).not.toHaveProperty('input_url');
     expect(request).not.toHaveProperty('input_file');
+  });
+});
+
+describe('yes/no and blank inputs', () => {
+  it.each([true, 1, 'true', 'TRUE', ' yes ', 'Yes', '1', 'on'])('reads %o as yes', (value) => {
+    expect(isTrue(value)).toBe(true);
+    expect(buildJobRequest({ input_url: 'https://example.com/a.mp3', is_private: value }).request.is_private).toBe(true);
+  });
+
+  it.each([false, 0, 'false', 'no', '0', 'off', 'maybe'])('reads %o as no', (value) => {
+    expect(isTrue(value)).toBe(false);
+  });
+
+  it('treats whitespace as blank instead of zero or an empty URL', () => {
+    const { errors, request } = buildJobRequest({ input_url: '   ', minimum_confidence: ' ', segment_duration: '\t' });
+
+    expect(errors).toEqual(['- Provide either an Input URL or an Input File to transcribe.']);
+    expect(request).toEqual({});
+  });
+
+  it('sends the language code in lowercase', () => {
+    expect(buildJobRequest({ input_url: 'https://example.com/a.mp3', language: ' EN ' }).request.language).toBe('en');
   });
 });
