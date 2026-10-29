@@ -4,6 +4,7 @@ Zapier integration for the Cloudflare Transcriber
 
 ## Develop
 
+1. Run `pnpm install`, then `pnpm test`
 1. Bump the version in `package.json`
 1. Run `zapier-platform push`
     - Verify that the integration is deployed [on this page](https://developer.zapier.com/)
