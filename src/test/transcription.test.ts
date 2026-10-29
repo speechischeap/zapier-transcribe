@@ -55,7 +55,12 @@ afterEach(() => {
 });
 
 describe('Transcribe Audio: input fields', () => {
-  const fields = transcription.inputFields as Array<{ choices?: unknown[]; group?: string; key: string }>;
+  const fields = transcription.inputFields as Array<{ choices?: unknown[]; group?: string; key: string; required?: boolean; type?: string }>;
+
+  it('accepts an Input File as an alternative to an optional Input URL', () => {
+    expect(fields.find(({ key }) => key === 'input_url')).toMatchObject({ required: false, type: 'string' });
+    expect(fields.find(({ key }) => key === 'input_file')).toMatchObject({ required: false, type: 'file' });
+  });
 
   it('offers a language dropdown and tucks the fine-tuning settings into Advanced Options', () => {
     expect(fields.find(({ key }) => key === 'language')?.choices).toHaveLength(100);
@@ -132,6 +137,8 @@ describe('Transcribe Audio: perform', () => {
   });
 
   it.each([
+    [{ input_url: '' }, 'Provide either an Input URL or an Input File to transcribe.'],
+    [{ input_file: 'https://zapier.com/engine/hydrate/1/.x/' }, 'Provide either an Input URL or an Input File, not both.'],
     [{ segment_duration: 5 }, 'Segment duration must be between 6 and 30 seconds'],
     [{ segment_duration: 31 }, 'Segment duration must be between 6 and 30 seconds'],
     [{ minimum_confidence: -0.1 }, 'Minimum confidence must be between 0.0 and 1.0'],

@@ -11,6 +11,7 @@ import {
   transcriptionOutputFields,
   transcriptionSample,
 } from '../lib/fields';
+import { fileToInputUrl } from '../lib/files';
 import {
   buildJobRequest,
   describeTranscription,
@@ -43,6 +44,10 @@ const perform: PerformFunction = async (z, bundle) => {
     });
 
     return describeTranscription(job, describeOptionsFor(z, bundle.inputData));
+  }
+
+  if (bundle.inputData.input_file) {
+    request.input_url = await fileToInputUrl(z, String(bundle.inputData.input_file));
   }
 
   const apiResponse = await z.request({
@@ -113,16 +118,23 @@ export default {
     inputFieldGroups: [advancedGroup],
 
     inputFields: [{
-      helpText: "The input URL depends on where the file is stored. Please [see the docs](https://docs.speechischeap.com/integrations/zapier) if you need additional help.",
+      helpText: 'Provide either a public file URL or a file from an earlier step. Exactly one input is required. Very long recordings work best through Input URL. For setup details, see the [documentation](https://docs.speechischeap.com/zapier/overview/).',
       key: 'copy',
       type: 'copy',
     }, {
-      helpText: 'Input URL of the audio file to transcribe.',
+      // Optional since 2.0.0, when Input File became the alternative. Never change its type.
+      helpText: 'Enter a direct download URL for an audio or video file that downloads without a login. Leave blank if you use Input File.',
       key: 'input_url',
       label: 'Input URL',
       placeholder: 'https://example.com/audio.mp3',
-      required: true,
+      required: false,
       type: 'string',
+    }, {
+      helpText: 'Select an audio or video file from an earlier step such as Google Drive or Dropbox. Files can be up to 150 MB. Leave blank if you use Input URL.',
+      key: 'input_file',
+      label: 'Input File',
+      required: false,
+      type: 'file',
     }, {
       choices: LANGUAGES,
       helpText: 'Select one of 100 languages to apply it to all segments. Leave blank to detect language automatically for each segment.',

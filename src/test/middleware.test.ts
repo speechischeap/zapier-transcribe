@@ -29,6 +29,20 @@ describe('middleware', () => {
     expect(scope.isDone()).toBe(true);
   });
 
+  it('keeps the API key away from other hosts, such as the Zapier URL of an Input File', async () => {
+    // `badheaders` makes the interceptor match only when no Authorization header is sent:
+    const scope = nock('https://zapier.com', { badheaders: ['authorization'] })
+      .get('/engine/hydrate/1/.payload/')
+      .reply(200, 'audio');
+
+    await appTester(
+      async (z: any) => z.request({ url: 'https://zapier.com/engine/hydrate/1/.payload/' }),
+      { authData: { token: 'sk_test' } },
+    );
+
+    expect(scope.isDone()).toBe(true);
+  });
+
   it.each([
     [{ error: 'Unauthorized' }, 'Unauthorized'],
     [{ message: 'Missing required "input_file" parameter' }, 'Missing required "input_file" parameter'],

@@ -137,7 +137,19 @@ export const buildJobRequest = (inputData: Record<string, unknown>): JobRequest 
   const errors: string[] = [];
   const request: Record<string, unknown> = {};
 
-  if (!isBlank(inputData.input_url)) {
+  const hasUrl = !isBlank(inputData.input_url);
+  const hasFile = !isBlank(inputData.input_file);
+
+  if (!hasUrl && !hasFile) {
+    errors.push('- Provide either an Input URL or an Input File to transcribe.');
+  }
+
+  if (hasUrl && hasFile) {
+    errors.push('- Provide either an Input URL or an Input File, not both.');
+  }
+
+  // An Input File becomes a URL in `perform`, which needs `z`; see `fileToInputUrl`.
+  if (hasUrl) {
     request.input_url = String(inputData.input_url).trim();
   }
 
