@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Transcript text, with optional timestamps, and the main detected language in the output
+
 ### Removed
 
 - **BREAKING**: Hotwords and Prompt inputs, which the Jobs API dropped in 2.8.0

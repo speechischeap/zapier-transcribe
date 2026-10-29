@@ -30,7 +30,9 @@ Remote invokes run the pushed code on Zapier's servers with a real connection, s
 2. `zapier-platform invoke -r -v 0.0.0-<label> -a <connection-id> create transcription --non-interactive -i '<json>'`. Find the connection ID by running `zapier-platform invoke -r auth test` in a terminal, which lists the admin account's connections.
 3. A callback action returns `"status": "delayed"` as soon as `perform` creates the job. When the API's webhook arrives, Zapier runs `performResume`. Read its input and output with `zapier-platform logs --type bundle --version 0.0.0-<label> --format json`. The `Input` column is cut off at about 3,500 characters. A step that throws, including a `HaltedError`, leaves no bundle entry; its error appears in `zapier-platform logs --type console --version 0.0.0-<label>`.
 4. `zapier-platform logs --type http --version 0.0.0-<label>` shows outgoing requests.
-5. Delete finished snapshots with `zapier-platform delete version 0.0.0-<label>`.
+5. `--isLoadingSample` has no effect in remote mode; the call runs a real job. Check the Sample locally instead: put `authData_token=<anything>` in a temporary `.env`, run `zapier-platform invoke create transcription --isLoadingSample -i '<json>'`, then delete `.env`. Local mode wants every input value as a string, such as `"true"`.
+6. Large outputs, such as a 20-minute Transcript, show as empty in the bundle log. `GET https://api.speechischeap.com/v2/jobs/<id>` needs no key, so fetch the job and run the code in `dist/` on it instead.
+7. Delete finished snapshots with `zapier-platform delete version 0.0.0-<label>`.
 
 Test Audio on `https://cdn.speechischeap.com/`:
 
