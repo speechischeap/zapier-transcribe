@@ -75,12 +75,13 @@ describe('Transcribe Audio: perform', () => {
       .reply(202, { id: JOB_ID, output: {}, status: 'PENDING' });
 
     const result = await appTester(transcription.perform, bundleWith({
-      inputData: { ...defaultInput, can_include_json: true },
+      inputData: { ...defaultInput, can_include_json: true, can_include_timestamps: true },
     }));
 
     expect(result).toMatchObject({ id: JOB_ID, status: 'PENDING' });
     expect(sentBody).toMatchObject({ ...defaultInput, webhook_url: CALLBACK_URL });
     expect(sentBody).not.toHaveProperty('can_include_json');
+    expect(sentBody).not.toHaveProperty('can_include_timestamps');
   });
 
   it.each([
@@ -124,7 +125,8 @@ describe('Transcribe Audio: perform', () => {
       meta: { isLoadingSample: true },
     }));
 
-    expect(result).toMatchObject({ id: JOB_ID, status: 'COMPLETED' });
+    expect(result).toMatchObject({ id: JOB_ID, language: 'en', status: 'COMPLETED' });
+    expect(result.text).toMatch(/^Speaker A: SAMPLE\./);
     expect(result.output.segments[0]).toMatchObject({ speaker_id: 'A' });
     expect(typeof result.json).toBe('string');
     expect(nock.pendingMocks()).toEqual([]);
@@ -138,8 +140,32 @@ describe('Transcribe Audio: performResume', () => {
       inputData: defaultInput,
     }));
 
-    expect(result).toMatchObject({ id: JOB_ID, status: 'COMPLETED' });
+    expect(result).toMatchObject({
+      id: JOB_ID,
+      language: 'en',
+      status: 'COMPLETED',
+      text: 'Hello there.',
+    });
     expect(result.output.segments).toHaveLength(1);
+  });
+
+  it('adds timestamps to the transcript when asked to', async () => {
+    const result = await appTester(transcription.performResume!, bundleWith({
+      cleanedRequest: structuredClone(completedJob),
+      inputData: { ...defaultInput, can_include_timestamps: true },
+    }));
+
+    expect(result.text).toBe('[0:00] Hello there.');
+  });
+
+  it('drops the query string Zapier adds to the callback', async () => {
+    const result = await appTester(transcription.performResume!, bundleWith({
+      cleanedRequest: { ...structuredClone(completedJob), querystring: {} },
+      inputData: { ...defaultInput, can_include_json: true },
+    }));
+
+    expect(result).not.toHaveProperty('querystring');
+    expect(JSON.parse(result.json)).not.toHaveProperty('querystring');
   });
 
   it('adds the raw JSON when asked to', async () => {
@@ -148,7 +174,7 @@ describe('Transcribe Audio: performResume', () => {
       inputData: { ...defaultInput, can_include_json: true },
     }));
 
-    expect(JSON.parse(result.json)).toMatchObject({ id: JOB_ID });
+    expect(JSON.parse(result.json)).toEqual(completedJob);
   });
 
   it.each([

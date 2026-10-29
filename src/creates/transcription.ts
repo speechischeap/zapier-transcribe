@@ -3,71 +3,14 @@ import type {
   PerformFunction,
 } from 'zapier-platform-core';
 
-interface TranscriptionJob {
-  id: string;
-  json?: string;
-  output: TranscriptionOutputOnError | TranscriptionOutputOnSuccess;
-  querystring?: object;
-  status: 'CANCELED' | 'COMPLETED' | 'FAILED';
-}
+import {
+  describeTranscription,
+  type Job,
+  sampleJob,
+} from '../lib/jobs';
 
-interface TranscriptionOutputOnError {
-  error: string;
-  request: object;
-}
-
-interface TranscriptionOutputOnSuccess {
-  request: object;
-  segments: Array<{
-    confidence: number;
-    end: number;
-    id: number;
-    label?: string;
-    language: string;
-    processing_duration_in_s: number;
-    seek: number;
-    speaker_id?: string;
-    start: number;
-    text: string;
-    words: any[] | null;
-  }>
-}
-
-const sampleTranscript: TranscriptionJob = {
-  id: '00000000-1111-7222-b333-444444444444-sic',
-  status: 'COMPLETED',
-  output: {
-    request: {
-      can_label_audio: false,
-      can_parse_speakers: false,
-      can_parse_words: false,
-      input_url: '',
-      language: null,
-      minimum_confidence: 0.5,
-      segment_duration: 30
-    },
-
-    segments: [
-      {
-        confidence: 1.000,
-        end: 12.345,
-        id: 1,
-        language: 'en (99.95%)',
-        processing_duration_in_s: 0.321,
-        seek: 1234.5,
-        start: 1.234,
-        text: 'SAMPLE. Publish Zap for the real transcription.',
-        words: null
-      }
-    ]
-  },
-}
-
-const sampleTranscriptWords = [{
-  end: 1.345,
-  text: 'SAMPLE.',
-  start: 1.234,
-}];
+// Settings that shape the Zap step's output but mean nothing to the Jobs API:
+const OUTPUT_OPTIONS = ['can_include_json', 'can_include_timestamps'];
 
 // Failure messages from https://docs.speechischeap.com/errors/ that the same input would always trigger again:
 const PERMANENT_FAILURES = [
@@ -77,11 +20,17 @@ const PERMANENT_FAILURES = [
   /^'minimum_confidence' must be between/,
 ];
 
+const describeOptions = (inputData: Record<string, unknown>) => ({
+  includeJson: Boolean(inputData.can_include_json),
+  timestamps: Boolean(inputData.can_include_timestamps),
+});
+
 const perform: PerformFunction = async (z, bundle) => {
   const payload: typeof bundle.inputData = { ...bundle.inputData };
 
-  // Remove unexpected fields from the API payload:
-  delete payload.can_include_json;
+  for (const option of OUTPUT_OPTIONS) {
+    delete payload[option];
+  }
 
   // Validate payload:
   const validationErrors: string[] = [];
@@ -98,22 +47,15 @@ const perform: PerformFunction = async (z, bundle) => {
     throw new z.errors.Error(validationErrors.join('\n'), 'TranscriptionConfigurationError', 400);
   }
 
-  sampleTranscript.output.request = payload;
-
   if (bundle.meta.isLoadingSample) {
-    const successfulOutput = sampleTranscript.output as TranscriptionOutputOnSuccess;
+    const job = sampleJob({
+      labels: Boolean(payload.can_label_audio),
+      request: payload,
+      speakers: Boolean(payload.can_parse_speakers),
+      words: Boolean(payload.can_parse_words),
+    });
 
-    if (successfulOutput.segments && successfulOutput.segments[0]) {
-      const firstSegment = successfulOutput.segments[0];
-
-      firstSegment.label = bundle.inputData.can_label_audio ? 'speech' : undefined;
-      firstSegment.speaker_id = bundle.inputData.can_parse_speakers ? 'A' : undefined;
-      firstSegment.words = bundle.inputData.can_parse_words ? sampleTranscriptWords : null;
-    }
-
-    sampleTranscript.json = bundle.inputData.can_include_json ? JSON.stringify(sampleTranscript) : undefined;
-
-    return sampleTranscript;
+    return describeTranscription(job, describeOptions(bundle.inputData));
   }
 
   payload.webhook_url = z.generateCallbackUrl();
@@ -130,7 +72,7 @@ const perform: PerformFunction = async (z, bundle) => {
     throw new z.errors.Error(message, 'TranscriptionError', apiResponse.status);
   }
 
-  const jobData = apiResponse.data as TranscriptionJob;
+  const jobData = apiResponse.data as Job;
 
   if (!jobData || !jobData.id) {
     throw new z.errors.Error('Transcription job initiated, but no job ID was returned.', 'JobCreationError', 500);
@@ -140,20 +82,15 @@ const perform: PerformFunction = async (z, bundle) => {
 };
 
 const performResume: PerformFunction = async (z, bundle) => {
-  const finalJobResponse = bundle.cleanedRequest as TranscriptionJob;
-
-  delete finalJobResponse.querystring;
-
-  const { status } = finalJobResponse;
+  const job = bundle.cleanedRequest as Job;
+  const { status } = job;
 
   if (status === 'COMPLETED') {
-    finalJobResponse.json = bundle.inputData.can_include_json ? JSON.stringify(finalJobResponse) : undefined;
-
-    return finalJobResponse;
+    return describeTranscription(job, describeOptions(bundle.inputData));
   }
 
   if (status === 'FAILED') {
-    const message = (finalJobResponse.output as TranscriptionOutputOnError)?.error || 'Transcription job failed with an unknown error';
+    const message = job.output?.error || 'Transcription job failed with an unknown error';
 
     // A permanent failure would fail again with the same input, so halt instead of letting Autoreplay resend it:
     if (PERMANENT_FAILURES.some((pattern) => pattern.test(message))) {
@@ -176,14 +113,25 @@ export default {
   noun: 'Transcription',
 
   display: {
-    description: 'Creates a new audio transcription',
+    description: 'Creates a new transcription from an audio or video file.',
     label: 'Transcribe Audio',
   },
 
   operation: {
     perform,
     performResume,
-    sample: sampleTranscript as unknown as { [k: string]: unknown; },
+    sample: describeTranscription(
+      sampleJob({ labels: false, request: {}, speakers: false, words: false }),
+      { includeJson: false, timestamps: false },
+    ) as unknown as { [k: string]: unknown },
+
+    outputFields: [
+      { key: 'id', label: 'Transcription ID' },
+      { key: 'status', label: 'Status' },
+      { key: 'text', label: 'Transcript' },
+      { key: 'language', label: 'Detected Language' },
+      { key: 'output__duration', label: 'Duration in Seconds', type: 'number' },
+    ],
 
     inputFields: [{
       helpText: "The input URL depends on where the file is stored. Please [see the docs](https://docs.speechischeap.com/integrations/zapier) if you need additional help.",
@@ -213,6 +161,12 @@ export default {
       helpText: "When enabled, includes an audio classification label in the transcription. See [add-ons](https://speechischeap.com/#addons) for pricing.",
       key: 'can_label_audio',
       label: 'Can Label Audio?',
+      type: 'boolean',
+    }, {
+      default: 'false',
+      helpText: 'When enabled, adds a timestamp such as [0:04] to the start of each line in the Transcript.',
+      key: 'can_include_timestamps',
+      label: 'Include Timestamps in Transcript?',
       type: 'boolean',
     }, {
       default: '0.5',
