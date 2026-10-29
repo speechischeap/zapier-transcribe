@@ -1,6 +1,5 @@
 import type {
   Create,
-  HttpResponse,
   PerformFunction,
 } from 'zapier-platform-core';
 
@@ -79,8 +78,6 @@ const PERMANENT_FAILURES = [
 ];
 
 const perform: PerformFunction = async (z, bundle) => {
-  let apiResponse: HttpResponse<any>;
-
   const payload: typeof bundle.inputData = { ...bundle.inputData };
 
   // Remove unexpected fields from the API payload:
@@ -121,18 +118,11 @@ const perform: PerformFunction = async (z, bundle) => {
 
   payload.webhook_url = z.generateCallbackUrl();
 
-  try {
-    apiResponse = await z.request({
-      body: payload,
-      headers: { Authorization: `Bearer ${bundle.authData.token}` },
-      method: 'POST',
-      url: 'https://api.speechischeap.com/v2/jobs/',
-    });
-  } catch (error: any) {
-    const message = error.message || 'Failed to start a transcription job';
-
-    throw new z.errors.Error(message, 'TranscriptionError', 400);
-  }
+  const apiResponse = await z.request({
+    body: payload,
+    method: 'POST',
+    url: 'https://api.speechischeap.com/v2/jobs/',
+  });
 
   if (apiResponse.status !== 202) {
     const message = apiResponse.data?.error || `API returned status ${apiResponse.status}`;
