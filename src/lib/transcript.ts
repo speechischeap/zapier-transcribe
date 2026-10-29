@@ -4,8 +4,9 @@ export interface TranscriptOptions {
   timestamps: boolean;
 }
 
-// Ends with sentence punctuation, allowing closing quotes or brackets after it:
-const SENTENCE_END = /[.!?…]["'”’)\]]*$/;
+// Ends with sentence punctuation, including CJK, Arabic, and Devanagari marks, allowing closing quotes
+// or brackets after it:
+const SENTENCE_END = /[.!?…。．！？؟।]["'”’」』)）\]]*$/;
 
 // Speech keeps its text. Other sounds show their audio label, such as [music]. Silence shows nothing.
 const contentOf = (segment: Segment): string => {

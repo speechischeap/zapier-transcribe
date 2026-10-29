@@ -41,6 +41,17 @@ describe('buildTranscript', () => {
       .toBe('So the plan was to ship it on Friday.\n\nThen it rained.');
   });
 
+  it.each([
+    ['Japanese', 'そうですね。', 'どうですか？'],
+    ['Chinese with a closing quote', '他说：“好的。”', '然后呢！'],
+    ['Arabic', 'هل أنت مستعد؟', 'نعم.'],
+    ['Hindi', 'यह अच्छा है।', 'धन्यवाद।'],
+  ])('starts a paragraph after a %s sentence', (_language, first, second) => {
+    const segments = [segment({ start: 0, text: first }), segment({ start: 5, text: second })];
+
+    expect(buildTranscript(segments, plain)).toBe(`${first}\n\n${second}`);
+  });
+
   it('names the Speaker at the start of each paragraph and when the Speaker changes', () => {
     const segments = [
       segment({ speaker_id: 'A', start: 0, text: 'Did it ship' }),
