@@ -8,11 +8,18 @@ import {
   transcriptionOutputFields,
   transcriptionSample,
 } from '../lib/fields';
-import { describeTranscription, type Job } from '../lib/jobs';
-import { apiErrorMessage } from '../middleware';
+import { describeTranscription, SAMPLE_JOB_ID, sampleJob } from '../lib/jobs';
+import { jobFrom } from '../lib/read';
 
 const perform: PerformFunction = async (z, bundle) => {
   const id = String(bundle.inputData.id ?? '').trim();
+
+  // The Zap editor maps the Sample's ID from Transcribe Audio while a user sets up this step:
+  if (id === SAMPLE_JOB_ID) {
+    const sample = sampleJob({ labels: false, request: {}, speakers: false, words: false });
+
+    return [describeTranscription(sample, describeOptionsFor(z, bundle.inputData))];
+  }
 
   // Reading a job needs no API key. The API answers 404 for an unknown ID, which a search reports
   // as finding nothing:
@@ -25,11 +32,7 @@ const perform: PerformFunction = async (z, bundle) => {
     return [];
   }
 
-  if (response.status >= 400) {
-    throw new z.errors.Error(apiErrorMessage(response), 'ApiError', response.status);
-  }
-
-  return [describeTranscription(response.data as Job, describeOptionsFor(z, bundle.inputData))];
+  return [describeTranscription(jobFrom(z, response), describeOptionsFor(z, bundle.inputData))];
 };
 
 export default {
