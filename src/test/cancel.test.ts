@@ -9,6 +9,7 @@ const appTester = zapier.createAppTester(App);
 
 const API = 'https://api.speechischeap.com';
 const JOB_ID = '01a18913-8ef8-7275-a791-13fa116a212b-sic';
+const SAMPLE_ID = '00000000-1111-7222-b333-444444444444-sic';
 
 const cancel = App.creates.cancel_transcription!.operation;
 
@@ -49,6 +50,34 @@ describe('Cancel Transcription', () => {
     const result = await appTester(cancel.perform, bundleWith({ id: JOB_ID }));
 
     expect(result).toMatchObject({ status: 'COMPLETED', text: 'Too late.' });
+  });
+
+  it('refuses to report success for a pending job another API key started', async () => {
+    nock(API).delete(`/v2/jobs/${JOB_ID}`).reply(404, '404 Not Found');
+    nock(API).get(`/v2/jobs/${JOB_ID}`).reply(200, { id: JOB_ID, output: {}, status: 'PENDING' });
+
+    const error = await rejectionOf(appTester(cancel.perform, bundleWith({ id: JOB_ID })));
+
+    expect(messageOf(error)).toMatch(/belongs to a different Speech is Cheap account or API key/);
+  });
+
+  it.each([
+    ['the Sample ID from Transcribe Audio', { id: SAMPLE_ID }, false],
+    ['a real ID while the editor tests the step', { id: JOB_ID }, true],
+  ])('returns a canceled sample without calling the API for %s', async (_case, inputData, isLoadingSample) => {
+    const result = await appTester(cancel.perform, { ...bundleWith(inputData), meta: { isLoadingSample } });
+
+    expect(result).toMatchObject({ id: SAMPLE_ID, status: 'CANCELED' });
+    expect(nock.pendingMocks()).toEqual([]);
+  });
+
+  it('explains an answer that is not a transcription', async () => {
+    nock(API).delete(`/v2/jobs/${JOB_ID}`).reply(200, 'OK');
+    nock(API).get(`/v2/jobs/${JOB_ID}`).reply(200, '<html><body>Down for maintenance</body></html>');
+
+    const error = await rejectionOf(appTester(cancel.perform, bundleWith({ id: JOB_ID })));
+
+    expect(messageOf(error)).toMatch(/^Speech is Cheap returned an unexpected response \(HTTP 200\)/);
   });
 
   it('fails clearly for an unknown ID', async () => {

@@ -57,6 +57,21 @@ describe('Find Transcription', () => {
     expect(result).toMatchObject({ id: JOB_ID, language: null, srt: '', srt_file: '', status: 'PENDING', text: '' });
   });
 
+  it('answers the Sample ID from Transcribe Audio with the sample, without calling the API', async () => {
+    const results = await appTester(search.perform, bundleWith({ id: '00000000-1111-7222-b333-444444444444-sic' }));
+
+    expect(results).toHaveLength(1);
+    expect(results[0].text).toMatch(/^SAMPLE\./);
+  });
+
+  it('explains an answer that is not a transcription', async () => {
+    nock(API).get(`/v2/jobs/${JOB_ID}`).reply(200, {});
+
+    const error = await rejectionOf(appTester(search.perform, bundleWith({ id: JOB_ID })));
+
+    expect(messageOf(error)).toMatch(/^Speech is Cheap returned an unexpected response \(HTTP 200\)/);
+  });
+
   it('finds nothing when the API does not know the ID', async () => {
     nock(API).get('/v2/jobs/nope-sic').reply(404, '404 Not Found');
 
