@@ -1,4 +1,4 @@
-import { buildTranscript, dominantLanguage } from './transcript';
+import { buildSubtitles, buildTranscript, dominantLanguage } from './transcript';
 
 // Shapes of the Jobs API v2, from https://docs.speechischeap.com/jobs-v2/output/
 
@@ -40,21 +40,33 @@ export interface Job {
 export interface Transcription extends Job {
   json?: string;
   language: string | null;
+  srt: string;
+  srt_file?: string;
   text: string;
+  vtt: string;
 }
 
 export interface DescribeOptions {
   includeJson: boolean;
+  // Returns a file pointer for the SRT Subtitles; omitted where no file can be offered.
+  subtitleFileFor?: (id: string) => string;
   timestamps: boolean;
 }
 
-export const describeTranscription = (job: Job, { includeJson, timestamps }: DescribeOptions): Transcription => {
+export const describeTranscription = (
+  job: Job,
+  { includeJson, subtitleFileFor, timestamps }: DescribeOptions,
+): Transcription => {
   const segments = job.output?.segments ?? [];
+  const srt = buildSubtitles(segments, 'srt');
 
   return {
     id: job.id,
     status: job.status,
     text: buildTranscript(segments, { timestamps }),
+    srt,
+    vtt: buildSubtitles(segments, 'vtt'),
+    ...(subtitleFileFor ? { srt_file: srt ? subtitleFileFor(job.id) : '' } : {}),
     language: dominantLanguage(segments),
     output: job.output ?? {},
     // The job as the API sent it, without the `querystring` Zapier adds to callbacks:

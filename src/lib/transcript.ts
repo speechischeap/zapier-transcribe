@@ -99,3 +99,39 @@ export const dominantLanguage = (segments: Segment[]): string | null => {
 
   return best;
 };
+
+export type SubtitleFormat = 'srt' | 'vtt';
+
+// 00:01:02,345 in SRT, 00:01:02.345 in VTT:
+const formatCueTime = (seconds: number, format: SubtitleFormat): string => {
+  const totalMs = Math.max(Math.round(seconds * 1000), 0);
+  const ms = String(totalMs % 1000).padStart(3, '0');
+  const totalSeconds = Math.floor(totalMs / 1000);
+  const hh = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+  const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+  const ss = String(totalSeconds % 60).padStart(2, '0');
+
+  return `${hh}:${mm}:${ss}${format === 'srt' ? ',' : '.'}${ms}`;
+};
+
+/**
+ * Builds Subtitles with one cue per Segment, like the API's own `output_format`, but keeps the
+ * Speaker in front of each cue and leaves out silence instead of writing empty cues.
+ */
+export const buildSubtitles = (segments: Segment[], format: SubtitleFormat): string => {
+  const cues = segments
+    .map((segment) => ({ content: contentOf(segment), segment }))
+    .filter(({ content }) => content)
+    .map(({ content, segment }, index) => {
+      const timing = `${formatCueTime(segment.start, format)} --> ${formatCueTime(segment.end, format)}`;
+      const cue = `${timing}\n${speakerOf(segment)}${content}`;
+
+      return format === 'srt' ? `${index + 1}\n${cue}` : cue;
+    });
+
+  if (!cues.length) {
+    return '';
+  }
+
+  return `${format === 'vtt' ? 'WEBVTT\n\n' : ''}${cues.join('\n\n')}\n`;
+};

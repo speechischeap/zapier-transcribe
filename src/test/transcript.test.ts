@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Segment } from '../lib/jobs';
-import { buildTranscript, dominantLanguage, formatClock } from '../lib/transcript';
+import { buildSubtitles, buildTranscript, dominantLanguage, formatClock } from '../lib/transcript';
 
 const segment = (overrides: Partial<Segment>): Segment => ({
   confidence: 0.9,
@@ -95,5 +95,44 @@ describe('dominantLanguage', () => {
   it('handles three-letter codes and returns null without speech', () => {
     expect(dominantLanguage([segment({ language: 'haw (97.00%)' })])).toBe('haw');
     expect(dominantLanguage([segment({ language: null })])).toBeNull();
+  });
+});
+
+describe('buildSubtitles', () => {
+  const segments = [
+    segment({ end: 2.5, speaker_id: 'A', start: 0.016, text: 'Hey everybody.' }),
+    segment({ end: 9, label: 'silence', language: null, start: 2.5, text: '' }),
+    segment({ end: 3725.0004, label: 'music', language: null, start: 3600, text: '' }),
+  ];
+
+  it('writes numbered SRT cues with comma milliseconds, skipping silence', () => {
+    expect(buildSubtitles(segments, 'srt')).toBe([
+      '1',
+      '00:00:00,016 --> 00:00:02,500',
+      'Speaker A: Hey everybody.',
+      '',
+      '2',
+      '01:00:00,000 --> 01:02:05,000',
+      '[music]',
+      '',
+    ].join('\n'));
+  });
+
+  it('writes a WEBVTT header and dot milliseconds for VTT', () => {
+    expect(buildSubtitles(segments, 'vtt')).toBe([
+      'WEBVTT',
+      '',
+      '00:00:00.016 --> 00:00:02.500',
+      'Speaker A: Hey everybody.',
+      '',
+      '01:00:00.000 --> 01:02:05.000',
+      '[music]',
+      '',
+    ].join('\n'));
+  });
+
+  it('returns an empty string when there is nothing to show', () => {
+    expect(buildSubtitles([], 'srt')).toBe('');
+    expect(buildSubtitles([segment({ label: 'silence', text: '' })], 'vtt')).toBe('');
   });
 });

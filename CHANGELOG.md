@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Transcript text, with optional timestamps, and the main detected language in the output
+- SRT and VTT subtitles in the output, plus an SRT file that later steps can save
 
 ### Removed
 

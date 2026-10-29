@@ -1,8 +1,10 @@
 import type {
   Create,
   PerformFunction,
+  ZObject,
 } from 'zapier-platform-core';
 
+import { subtitleFile } from '../hydrators';
 import {
   describeTranscription,
   type Job,
@@ -20,8 +22,9 @@ const PERMANENT_FAILURES = [
   /^'minimum_confidence' must be between/,
 ];
 
-const describeOptions = (inputData: Record<string, unknown>) => ({
+const describeOptions = (z: ZObject, inputData: Record<string, unknown>) => ({
   includeJson: Boolean(inputData.can_include_json),
+  subtitleFileFor: (id: string) => z.dehydrateFile(subtitleFile, { id }),
   timestamps: Boolean(inputData.can_include_timestamps),
 });
 
@@ -55,7 +58,7 @@ const perform: PerformFunction = async (z, bundle) => {
       words: Boolean(payload.can_parse_words),
     });
 
-    return describeTranscription(job, describeOptions(bundle.inputData));
+    return describeTranscription(job, describeOptions(z, bundle.inputData));
   }
 
   payload.webhook_url = z.generateCallbackUrl();
@@ -86,7 +89,7 @@ const performResume: PerformFunction = async (z, bundle) => {
   const { status } = job;
 
   if (status === 'COMPLETED') {
-    return describeTranscription(job, describeOptions(bundle.inputData));
+    return describeTranscription(job, describeOptions(z, bundle.inputData));
   }
 
   if (status === 'FAILED') {
@@ -122,13 +125,16 @@ export default {
     performResume,
     sample: describeTranscription(
       sampleJob({ labels: false, request: {}, speakers: false, words: false }),
-      { includeJson: false, timestamps: false },
+      { includeJson: false, subtitleFileFor: () => 'https://example.com/transcript.srt', timestamps: false },
     ) as unknown as { [k: string]: unknown },
 
     outputFields: [
       { key: 'id', label: 'Transcription ID' },
       { key: 'status', label: 'Status' },
       { key: 'text', label: 'Transcript' },
+      { key: 'srt', label: 'SRT Subtitles' },
+      { key: 'vtt', label: 'VTT Subtitles' },
+      { key: 'srt_file', label: 'SRT File', type: 'file' },
       { key: 'language', label: 'Detected Language' },
       { key: 'output__duration', label: 'Duration in Seconds', type: 'number' },
     ],
@@ -146,7 +152,7 @@ export default {
       type: 'string',
     }, {
       default: 'false',
-      helpText: "When enabled, adds `speaker_id` to each segment based on the speaker's voice. See [add-ons](https://speechischeap.com/#addons) for pricing.",
+      helpText: 'When enabled, identifies speakers by voice, adds speaker IDs to segments, and labels speakers like Speaker A in the Transcript and Subtitles. See [add-ons](https://speechischeap.com/#addons) for pricing.',
       key: 'can_parse_speakers',
       label: 'Can Parse Speakers?',
       type: 'boolean',
@@ -158,7 +164,7 @@ export default {
       type: 'boolean',
     }, {
       default: 'false',
-      helpText: "When enabled, includes an audio classification label in the transcription. See [add-ons](https://speechischeap.com/#addons) for pricing.",
+      helpText: 'When enabled, tags non-speech sounds like music in the Transcript and Subtitles. Silence is omitted. See [add-ons](https://speechischeap.com/#addons) for pricing.',
       key: 'can_label_audio',
       label: 'Can Label Audio?',
       type: 'boolean',
