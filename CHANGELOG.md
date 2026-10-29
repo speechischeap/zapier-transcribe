@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Transcript text, with optional timestamps, and the main detected language in the output
 - SRT and VTT subtitles in the output, plus an SRT file that later steps can save
 - Language, Split Channels, and Keep Transcription Private inputs, with fine-tuning settings under Advanced Options
+- Find Transcription search, which looks up a transcription by its ID
 
 ### Removed
 

@@ -5,6 +5,7 @@ import { subtitleFile } from './hydrators';
 import { afters, befores } from './middleware';
 import packageJson from '../package.json';
 import TranscriptionCreate from './creates/transcription';
+import TranscriptionSearch from './searches/transcription';
 
 export default defineApp({
   afterResponse: [...afters],
@@ -13,5 +14,6 @@ export default defineApp({
   creates: { [TranscriptionCreate.key]: TranscriptionCreate },
   hydrators: { subtitleFile },
   platformVersion,
+  searches: { [TranscriptionSearch.key]: TranscriptionSearch },
   version: packageJson.version,
 });
