@@ -58,3 +58,22 @@ describe('LANGUAGES', () => {
     expect(codes).not.toContain('jv');
   });
 });
+
+describe('buildJobRequest inputs', () => {
+  it('needs an Input URL or an Input File', () => {
+    expect(buildJobRequest({}).errors).toEqual(['- Provide either an Input URL or an Input File to transcribe.']);
+  });
+
+  it('refuses both at once', () => {
+    expect(buildJobRequest({ input_file: 'https://zapier.com/engine/hydrate/1/.x/', input_url: 'https://example.com/a.mp3' }).errors)
+      .toEqual(['- Provide either an Input URL or an Input File, not both.']);
+  });
+
+  it('leaves the Input File for perform to turn into a URL', () => {
+    const { errors, request } = buildJobRequest({ input_file: 'https://zapier.com/engine/hydrate/1/.x/' });
+
+    expect(errors).toEqual([]);
+    expect(request).not.toHaveProperty('input_url');
+    expect(request).not.toHaveProperty('input_file');
+  });
+});

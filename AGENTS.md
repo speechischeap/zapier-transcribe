@@ -2,6 +2,12 @@
 
 This repo is the public Zapier integration "Speech is Cheap" (Zapier app `App224577`). It exposes the Speech is Cheap Jobs API v2 to Zapier users. The domain vocabulary lives in `CONTEXT.md`; use its terms in code, copy, and commits.
 
+## Layout
+
+- `src/creates/`: Transcribe Audio (`transcription`) and Cancel Transcription. `src/searches/`: Find Transcription.
+- `src/lib/`: shared code. `jobs.ts` builds API requests and shapes a job into the step output; `transcript.ts` builds the Transcript and Subtitles; `fields.ts` holds the input and output fields every Transcription step shares; `files.ts` turns an Input File into a URL; `languages.ts` lists the language codes.
+- `src/hydrators.ts`: builds the SRT file when a later step asks for it. `src/middleware.ts`: bearer token and API error messages.
+
 ## Ground rules
 
 - Never push a semantic version (`x.y.z`), promote, migrate, or deprecate on Zapier without the user's explicit approval. Snapshot versions (`0.0.0-LABEL`) are fine for testing; only the integration team can see them.
@@ -32,7 +38,9 @@ Remote invokes run the pushed code on Zapier's servers with a real connection, s
 4. `zapier-platform logs --type http --version 0.0.0-<label>` shows outgoing requests.
 5. `--isLoadingSample` has no effect in remote mode; the call runs a real job. Check the Sample locally instead: put `authData_token=<anything>` in a temporary `.env`, run `zapier-platform invoke create transcription --isLoadingSample -i '<json>'`, then delete `.env`. Local mode wants every input value as a string, such as `"true"`.
 6. Large outputs, such as a 20-minute Transcript, show as empty in the bundle log. `GET https://api.speechischeap.com/v2/jobs/<id>` needs no key, so fetch the job and run the code in `dist/` on it instead.
-7. Delete finished snapshots with `zapier-platform delete version 0.0.0-<label>`.
+7. Hydrators, such as the SRT file, only run when a later Zap step consumes the file, so check them in a real Zap. The integration account has a test Zap, "Speech is Cheap 2.0.0 end-to-end test": a Webhooks catch hook, Google Drive Find a File, Transcribe Audio, and a Webhooks POST of the SRT File to an echo service. Its run history shows each step's data.
+8. Re-pushing a snapshot label that a published Zap uses leaves that Zap unable to publish edits. Push a new label instead and switch the Zap's step to it with the app's Change button. Reload the editor first; it caches the version list.
+9. Delete finished snapshots with `zapier-platform delete version 0.0.0-<label>`.
 
 Test Audio on `https://cdn.speechischeap.com/`:
 

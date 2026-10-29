@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Input File, so files from earlier steps such as Google Drive work without a public link
 - Transcript text, with optional timestamps, and the main detected language in the output
 - SRT and VTT subtitles in the output, plus an SRT file that later steps can save
 - Language, Split Channels, and Keep Transcription Private inputs, with fine-tuning settings under Advanced Options

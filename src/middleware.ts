@@ -1,8 +1,19 @@
 import type { AfterResponseMiddleware, BeforeRequestMiddleware, HttpResponse } from 'zapier-platform-core';
 
-// Every Speech is Cheap endpoint takes the API key as a bearer token:
+const isSpeechIsCheap = (url: string | undefined): boolean => {
+  try {
+    const { hostname } = new URL(url ?? '');
+
+    return hostname === 'speechischeap.com' || hostname.endsWith('.speechischeap.com');
+  } catch {
+    return false;
+  }
+};
+
+// Every Speech is Cheap endpoint takes the API key as a bearer token. Other hosts, such as the
+// Zapier URL an Input File arrives on, must never receive it:
 const addBearerToken: BeforeRequestMiddleware = (request, z, bundle) => {
-  if (bundle.authData?.token) {
+  if (bundle.authData?.token && isSpeechIsCheap(request.url)) {
     request.headers = { ...request.headers, Authorization: `Bearer ${bundle.authData.token}` };
   }
 
@@ -26,7 +37,8 @@ export const apiErrorMessage = (response: HttpResponse): string => {
 };
 
 const throwApiErrors: AfterResponseMiddleware = (response, z) => {
-  if (response.status < 400 || response.request.skipThrowForStatus) {
+  // Streamed (`raw`) responses have no body to read here; their callers check the status:
+  if (response.status < 400 || response.request.skipThrowForStatus || response.request.raw) {
     return response;
   }
 
