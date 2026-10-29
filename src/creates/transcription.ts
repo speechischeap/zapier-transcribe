@@ -130,7 +130,7 @@ export default {
       required: false,
       type: 'string',
     }, {
-      helpText: 'Select an audio or video file from an earlier step such as Google Drive or Dropbox. Files can be up to 150 MB. Leave blank if you use Input URL.',
+      helpText: 'Select an audio or video file from an earlier step such as Google Drive or Dropbox. Files can be up to 150 MB. Leave blank if you use Input URL. Zapier passes Speech is Cheap an unlisted link to a copy of the file, and Keep Transcription Private hides that link.',
       key: 'input_file',
       label: 'Input File',
       required: false,
