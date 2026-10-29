@@ -149,6 +149,18 @@ describe('Transcribe Audio: performResume', () => {
     expect(result.output.segments).toHaveLength(1);
   });
 
+  it('adds SRT and VTT Subtitles and a lazy SRT file', async () => {
+    const result = await appTester(transcription.performResume!, bundleWith({
+      cleanedRequest: structuredClone(completedJob),
+      inputData: defaultInput,
+    }));
+
+    expect(result.srt).toBe('1\n00:00:00,000 --> 00:00:02,500\nHello there.\n');
+    expect(result.vtt).toBe('WEBVTT\n\n00:00:00.000 --> 00:00:02.500\nHello there.\n');
+    expect(result.srt_file).toMatch(/^hydrate\|\|\|.*hydrators\.subtitleFile.*\|\|\|hydrate$/);
+    expect(result.srt_file).toContain(JOB_ID);
+  });
+
   it('adds timestamps to the transcript when asked to', async () => {
     const result = await appTester(transcription.performResume!, bundleWith({
       cleanedRequest: structuredClone(completedJob),
