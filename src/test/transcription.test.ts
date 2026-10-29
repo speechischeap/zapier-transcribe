@@ -53,6 +53,15 @@ afterEach(() => {
   nock.cleanAll();
 });
 
+describe('Transcribe Audio: input fields', () => {
+  it('no longer offers the inputs the Jobs API dropped in 2.8.0', () => {
+    const keys = (transcription.inputFields as Array<{ key: string }>).map((field) => field.key);
+
+    expect(keys).not.toContain('hotwords');
+    expect(keys).not.toContain('prompt');
+  });
+});
+
 describe('Transcribe Audio: perform', () => {
   it('starts a job with a callback URL and returns the pending job', async () => {
     let sentBody: Record<string, unknown> = {};

@@ -42,11 +42,9 @@ const sampleTranscript: TranscriptionJob = {
       can_label_audio: false,
       can_parse_speakers: false,
       can_parse_words: false,
-      hotwords: null,
       input_url: '',
       language: null,
       minimum_confidence: 0.5,
-      prompt: null,
       segment_duration: 30
     },
 
@@ -229,16 +227,6 @@ export default {
       key: 'segment_duration',
       label: 'Segment Duration in Seconds (6 - 30)',
       type: 'integer',
-    }, {
-      helpText: "Specific words or phrases to help improve transcription accuracy. ⚠️ Use with caution; may lead to hallucinations.",
-      key: 'hotwords',
-      label: 'Hotwords',
-      type: 'string',
-    }, {
-      helpText: "Custom prompt to adjust transcription style. Should match the audio language. ⚠️ Use with caution; may lead to hallucinations.",
-      key: 'prompt',
-      label: 'Prompt',
-      type: 'string',
     }, {
       default: 'false',
       helpText: "Override Zapier's default behavior and include the raw JSON response in the output.",
