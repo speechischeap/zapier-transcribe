@@ -9,22 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Input File, so files from earlier steps such as Google Drive work without a public link
-- Transcript text, with optional timestamps, and the main detected language in the output
-- SRT and VTT subtitles in the output, plus an SRT file that later steps can save
-- Language, Split Channels, and Keep Transcription Private inputs, with fine-tuning settings under Advanced Options
-- Find Transcription search, which looks up a transcription by its ID
-- Cancel Transcription action, which stops a transcription before it is billed
+- Input File for files from earlier steps, such as Google Drive
+- Transcript with optional timestamps, and Detected Language
+- SRT and VTT Subtitles, plus an SRT File for later steps
+- Language, Split Channels, and Keep Transcription Private inputs
+- Find Transcription search
+- Cancel Transcription action
 
 ### Removed
 
-- **BREAKING**: Hotwords and Prompt inputs, which the Jobs API dropped in 2.8.0
+- **BREAKING**: Hotwords and Prompt inputs, dropped by Jobs API 2.8.0
 
 ### Fixed
 
-- Read yes/no values mapped from earlier steps, such as "Yes" or "1", the same way everywhere, and treat blank values as unset
-- Show the API's own error message instead of a JSON dump when a request fails
-- Halt the Zap instead of failing it when the audio is over 24 hours, the language is unsupported, the confidence threshold is out of range, or someone canceled the transcription
+- Read mapped yes/no values such as "Yes" or "1"
+- Show the API's error message instead of a JSON dump
+- Halt the Zap for audio over 24 hours and other permanent failures
 
 ## [1.2.0] - 2026-10-27
 
