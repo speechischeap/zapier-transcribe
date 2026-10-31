@@ -1,132 +1,60 @@
 import type {
   Create,
-  HttpResponse,
   PerformFunction,
 } from 'zapier-platform-core';
 
-interface TranscriptionJob {
-  id: string;
-  json?: string;
-  output: TranscriptionOutputOnError | TranscriptionOutputOnSuccess;
-  querystring?: object;
-  status: 'CANCELED' | 'COMPLETED' | 'FAILED';
-}
+import {
+  advancedGroup,
+  describeOptionsFor,
+  jsonField,
+  timestampsField,
+  transcriptionOutputFields,
+  transcriptionSample,
+} from '../lib/fields';
+import { fileToInputUrl } from '../lib/files';
+import {
+  buildJobRequest,
+  describeTranscription,
+  type Job,
+  sampleJob,
+} from '../lib/jobs';
+import { LANGUAGES } from '../lib/languages';
 
-interface TranscriptionOutputOnError {
-  error: string;
-  request: object;
-}
-
-interface TranscriptionOutputOnSuccess {
-  request: object;
-  segments: Array<{
-    confidence: number;
-    end: number;
-    id: number;
-    label?: string;
-    language: string;
-    processing_duration_in_s: number;
-    seek: number;
-    speaker_id?: string;
-    start: number;
-    text: string;
-    words: any[] | null;
-  }>
-}
-
-const sampleTranscript: TranscriptionJob = {
-  id: '00000000-1111-7222-b333-444444444444-sic',
-  status: 'COMPLETED',
-  output: {
-    request: {
-      can_label_audio: false,
-      can_parse_speakers: false,
-      can_parse_words: false,
-      hotwords: null,
-      input_url: '',
-      language: null,
-      minimum_confidence: 0.5,
-      prompt: null,
-      segment_duration: 30
-    },
-
-    segments: [
-      {
-        confidence: 1.000,
-        end: 12.345,
-        id: 1,
-        language: 'en (99.95%)',
-        processing_duration_in_s: 0.321,
-        seek: 1234.5,
-        start: 1.234,
-        text: 'SAMPLE. Publish Zap for the real transcription.',
-        words: null
-      }
-    ]
-  },
-}
-
-const sampleTranscriptWords = [{
-  end: 1.345,
-  text: 'SAMPLE.',
-  start: 1.234,
-}];
+// Failure messages from https://docs.speechischeap.com/errors/ that the same input would always trigger again:
+const PERMANENT_FAILURES = [
+  /^Expected at least [\d.]+ seconds/,
+  /^Expected at most [\d.]+ seconds/,
+  /does not appear in the list of supported languages/,
+  /^'minimum_confidence' must be between/,
+];
 
 const perform: PerformFunction = async (z, bundle) => {
-  let apiResponse: HttpResponse<any>;
+  const { errors, request } = buildJobRequest(bundle.inputData);
 
-  const payload: typeof bundle.inputData = { ...bundle.inputData };
-
-  // Remove unexpected fields from the API payload:
-  delete payload.can_include_json;
-
-  // Validate payload:
-  const validationErrors: string[] = [];
-
-  if (payload.segment_duration < 6 || payload.segment_duration > 30) {
-    validationErrors.push('- Segment duration must be between 6 and 30 seconds (inclusive).');
+  if (errors.length) {
+    throw new z.errors.Error(errors.join('\n'), 'TranscriptionConfigurationError', 400);
   }
-
-  if (payload.minimum_confidence < 0 || payload.minimum_confidence > 1) {
-    validationErrors.push('- Minimum confidence must be between 0.0 and 1.0 (inclusive).');
-  }
-
-  if (validationErrors.length) {
-    throw new z.errors.Error(validationErrors.join('\n'), 'TranscriptionConfigurationError', 400);
-  }
-
-  sampleTranscript.output.request = payload;
 
   if (bundle.meta.isLoadingSample) {
-    const successfulOutput = sampleTranscript.output as TranscriptionOutputOnSuccess;
-
-    if (successfulOutput.segments && successfulOutput.segments[0]) {
-      const firstSegment = successfulOutput.segments[0];
-
-      firstSegment.label = bundle.inputData.can_label_audio ? 'speech' : undefined;
-      firstSegment.speaker_id = bundle.inputData.can_parse_speakers ? 'A' : undefined;
-      firstSegment.words = bundle.inputData.can_parse_words ? sampleTranscriptWords : null;
-    }
-
-    sampleTranscript.json = bundle.inputData.can_include_json ? JSON.stringify(sampleTranscript) : undefined;
-
-    return sampleTranscript;
-  }
-
-  payload.webhook_url = z.generateCallbackUrl();
-
-  try {
-    apiResponse = await z.request({
-      body: payload,
-      headers: { Authorization: `Bearer ${bundle.authData.token}` },
-      method: 'POST',
-      url: 'https://api.speechischeap.com/v2/jobs/',
+    const job = sampleJob({
+      labels: Boolean(request.can_label_audio),
+      request,
+      speakers: Boolean(request.can_parse_speakers || request.is_split_channel),
+      words: Boolean(request.can_parse_words),
     });
-  } catch (error: any) {
-    const message = error.message || 'Failed to start a transcription job';
 
-    throw new z.errors.Error(message, 'TranscriptionError', 400);
+    return describeTranscription(job, describeOptionsFor(z, bundle.inputData));
   }
+
+  if (bundle.inputData.input_file) {
+    request.input_url = await fileToInputUrl(z, String(bundle.inputData.input_file));
+  }
+
+  const apiResponse = await z.request({
+    body: { ...request, webhook_url: z.generateCallbackUrl() },
+    method: 'POST',
+    url: 'https://api.speechischeap.com/v2/jobs/',
+  });
 
   if (apiResponse.status !== 202) {
     const message = apiResponse.data?.error || `API returned status ${apiResponse.status}`;
@@ -134,7 +62,7 @@ const perform: PerformFunction = async (z, bundle) => {
     throw new z.errors.Error(message, 'TranscriptionError', apiResponse.status);
   }
 
-  const jobData = apiResponse.data as TranscriptionJob;
+  const jobData = apiResponse.data as Job;
 
   if (!jobData || !jobData.id) {
     throw new z.errors.Error('Transcription job initiated, but no job ID was returned.', 'JobCreationError', 500);
@@ -144,31 +72,27 @@ const perform: PerformFunction = async (z, bundle) => {
 };
 
 const performResume: PerformFunction = async (z, bundle) => {
-  const finalJobResponse = bundle.cleanedRequest as TranscriptionJob;
-
-  delete finalJobResponse.querystring;
-
-  const { status } = finalJobResponse;
+  const job = bundle.cleanedRequest as Job;
+  const { status } = job;
 
   if (status === 'COMPLETED') {
-    finalJobResponse.json = bundle.inputData.can_include_json ? JSON.stringify(finalJobResponse) : undefined;
-
-    return finalJobResponse;
+    return describeTranscription(job, describeOptionsFor(z, bundle.inputData));
   }
 
   if (status === 'FAILED') {
-    const message = (finalJobResponse.output as TranscriptionOutputOnError)?.error || 'Transcription job failed with an unknown error';
+    const message = job.output?.error || 'Transcription job failed with an unknown error';
 
-    // Audio under the minimum duration can never succeed, so halt instead of letting Autoreplay resend it:
-    if (/^Expected at least \d+ seconds/.test(message)) {
+    // A permanent failure would fail again with the same input, so halt instead of letting Autoreplay resend it:
+    if (PERMANENT_FAILURES.some((pattern) => pattern.test(message))) {
       throw new z.errors.HaltedError(message);
     }
 
     throw new z.errors.Error(message, 'TranscriptionError', 400);
   }
 
+  // Someone canceled the transcription on purpose, so a replay would only undo their decision:
   if (status === 'CANCELED') {
-    throw new z.errors.Error('Transcription job was canceled', 'TranscriptionError', 400);
+    throw new z.errors.HaltedError('The transcription was canceled before it finished.');
   }
 
   throw new z.errors.Error(`Received unexpected job status from webhook: ${status}`, 'WebhookError', 400);
@@ -179,29 +103,48 @@ export default {
   noun: 'Transcription',
 
   display: {
-    description: 'Creates a new audio transcription',
+    description: 'Creates a new transcription from an audio or video file.',
     label: 'Transcribe Audio',
   },
 
   operation: {
+    // `buildJobRequest` drops blank fields itself, so Zapier need not clean them (check D028):
+    cleanInputData: false,
     perform,
     performResume,
-    sample: sampleTranscript as unknown as { [k: string]: unknown; },
+    sample: transcriptionSample,
+    outputFields: transcriptionOutputFields,
+
+    inputFieldGroups: [advancedGroup],
 
     inputFields: [{
-      helpText: "The input URL depends on where the file is stored. Please [see the docs](https://docs.speechischeap.com/integrations/zapier) if you need additional help.",
+      helpText: 'Provide either a public file URL or a file from an earlier step. Exactly one input is required. Very long recordings work best through Input URL. For setup details, see the [documentation](https://docs.speechischeap.com/zapier/overview/).',
       key: 'copy',
       type: 'copy',
     }, {
-      helpText: 'Input URL of the audio file to transcribe.',
+      // Optional since 2.0.0, when Input File became the alternative. Never change its type.
+      helpText: 'Enter a direct download URL for an audio or video file that downloads without a login. Leave blank if you use Input File.',
       key: 'input_url',
       label: 'Input URL',
       placeholder: 'https://example.com/audio.mp3',
-      required: true,
+      required: false,
+      type: 'string',
+    }, {
+      helpText: 'Select an audio or video file from an earlier step such as Google Drive or Dropbox. Files can be up to 150 MB. Leave blank if you use Input URL. Zapier passes Speech is Cheap an unlisted link to a copy of the file, and Keep Transcription Private hides that link.',
+      key: 'input_file',
+      label: 'Input File',
+      required: false,
+      type: 'file',
+    }, {
+      choices: LANGUAGES,
+      helpText: 'Select one of 100 languages to apply it to all segments. Leave blank to detect language automatically for each segment.',
+      key: 'language',
+      label: 'Language',
+      required: false,
       type: 'string',
     }, {
       default: 'false',
-      helpText: "When enabled, adds `speaker_id` to each segment based on the speaker's voice. See [add-ons](https://speechischeap.com/#addons) for pricing.",
+      helpText: 'When enabled, identifies speakers by voice, adds speaker IDs to segments, and labels speakers like Speaker A in the Transcript and Subtitles. See [add-ons](https://speechischeap.com/#addons) for pricing.',
       key: 'can_parse_speakers',
       label: 'Can Parse Speakers?',
       type: 'boolean',
@@ -213,38 +156,38 @@ export default {
       type: 'boolean',
     }, {
       default: 'false',
-      helpText: "When enabled, includes an audio classification label in the transcription. See [add-ons](https://speechischeap.com/#addons) for pricing.",
+      helpText: 'When enabled, tags non-speech sounds like music in the Transcript and Subtitles. Silence is omitted. See [add-ons](https://speechischeap.com/#addons) for pricing.',
       key: 'can_label_audio',
       label: 'Can Label Audio?',
       type: 'boolean',
+    }, timestampsField, {
+      default: 'false',
+      group: 'advanced',
+      helpText: 'When enabled, treats each audio channel as its own speaker, such as in a stereo call recording. Works without speaker parsing.',
+      key: 'is_split_channel',
+      label: 'Split Channels?',
+      type: 'boolean',
+    }, {
+      default: 'false',
+      group: 'advanced',
+      helpText: "When enabled, hides the input URL and deletes the transcript from Speech is Cheap's servers 12 hours after completion. Your Zap step still receives the full result.",
+      key: 'is_private',
+      label: 'Keep Transcription Private?',
+      type: 'boolean',
     }, {
       default: '0.5',
+      group: 'advanced',
       helpText: "Filter out segments that fall below this confidence threshold. Applies both to transcriptions and to non-speech audio labels when `can_label_audio` is `true`.",
       key: 'minimum_confidence',
       label: 'Minimum Confidence Threshold (0.0 - 1.0)',
       type: 'number',
     }, {
       default: '30',
+      group: 'advanced',
       helpText: 'Duration of each transcription segment in seconds. Must be between six and 30 seconds.',
       key: 'segment_duration',
       label: 'Segment Duration in Seconds (6 - 30)',
       type: 'integer',
-    }, {
-      helpText: "Specific words or phrases to help improve transcription accuracy. ⚠️ Use with caution; may lead to hallucinations.",
-      key: 'hotwords',
-      label: 'Hotwords',
-      type: 'string',
-    }, {
-      helpText: "Custom prompt to adjust transcription style. Should match the audio language. ⚠️ Use with caution; may lead to hallucinations.",
-      key: 'prompt',
-      label: 'Prompt',
-      type: 'string',
-    }, {
-      default: 'false',
-      helpText: "Override Zapier's default behavior and include the raw JSON response in the output.",
-      key: 'can_include_json',
-      label: 'Include JSON in Output?',
-      type: 'boolean',
-    }],
+    }, jsonField],
   },
 } satisfies Create;

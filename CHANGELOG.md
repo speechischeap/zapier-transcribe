@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-31
+
+### Added
+
+- Input File for files from earlier steps, such as Google Drive
+- Transcript with optional timestamps, and Detected Language
+- SRT and VTT Subtitles, plus an SRT File for later steps
+- Language, Split Channels, and Keep Transcription Private inputs
+- Find Transcription search
+- Cancel Transcription action
+
+### Removed
+
+- **BREAKING**: Hotwords and Prompt inputs, dropped by Jobs API 2.8.0
+
+### Fixed
+
+- Read mapped yes/no values such as "Yes" or "1"
+- Show the API's error message instead of a JSON dump
+- Halt the Zap for audio over 24 hours and other permanent failures
+
 ## [1.2.0] - 2026-10-27
 
 ### Changed

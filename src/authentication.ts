@@ -1,4 +1,4 @@
-import type { Authentication, Request } from 'zapier-platform-core';
+import type { Authentication } from 'zapier-platform-core';
 
 export default {
   type: 'custom',
@@ -12,9 +12,6 @@ export default {
   }],
 
   test: async (z, bundle) => {
-    await z.request({
-      headers: { Authorization: `Bearer ${bundle.authData.token}` },
-      url: 'https://api.speechischeap.com/v2/jobs/auth',
-    });
+    await z.request({ url: 'https://api.speechischeap.com/v2/jobs/auth' });
   },
 } satisfies Authentication;
