@@ -17,9 +17,10 @@ This repo is the public Zapier integration "Speech is Cheap" (Zapier app `App224
 
 ## Workflow
 
+- This repo is public and authoritative at `https://github.com/speechischeap/zapier-transcribe`; use `gh` for issues and PRs. The user docs live in the private Forgejo repo `https://git.ilyakam.com/ilyakam/speechischeap-docs`; use `fj` there.
 - HubFlow: branch `feature/*` off `develop` with `git hf feature start <name>`, open a PR into `develop`, merge with a merge commit, then `git hf feature finish <name>`. Releases go through `release/*` into `master`.
 - One problem per PR and one commit per PR.
-- Keep `CHANGELOG.md` entries short; put the full context in the commit message.
+- Write each `CHANGELOG.md` entry as one phrase of 70 characters or fewer. The user finds a change there and reaches its commit with `git blame`, so the full context goes in the commit message.
 - Use `pnpm`. `zapier-platform` is the CLI binary (the old `zapier` binary is gone since 19.0.0).
 
 ## Checks
