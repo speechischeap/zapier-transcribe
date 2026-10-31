@@ -40,8 +40,8 @@ Remote invokes run the pushed code on Zapier's servers with a real connection, s
 5. `--isLoadingSample` has no effect in remote mode; the call runs a real job. Check the Sample locally instead: put `authData_token=<anything>` in a temporary `.env`, run `zapier-platform invoke create transcription --isLoadingSample -i '<json>'`, then delete `.env`. Local mode wants every input value as a string, such as `"true"`.
 6. Large outputs, such as a 20-minute Transcript, show as empty in the bundle log. `GET https://api.speechischeap.com/v2/jobs/<id>` needs no key, so fetch the job and run the code in `dist/` on it instead.
 7. Hydrators, such as the SRT file, only run when a later Zap step consumes the file, so check them in a real Zap. The integration account has a test Zap, "Speech is Cheap 2.0.0 end-to-end test": a Webhooks catch hook, Google Drive Find a File, Transcribe Audio, and a Webhooks POST of the SRT File to an echo service. Its run history shows each step's data.
-8. Re-pushing a snapshot label that a published Zap uses leaves that Zap unable to publish edits. Push a new label instead and switch the Zap's step to it with the app's Change button. Reload the editor first; it caches the version list.
-9. Delete finished snapshots with `zapier-platform delete version 0.0.0-<label>`.
+8. Re-pushing a snapshot label that a published Zap uses leaves that Zap unable to publish edits. Push a new label instead and switch the Zap's step to it with the app's Change button. Reload the editor first; it caches the version list. Publishing turns the Zap on, so turn it off again; any request to its catch hook starts a billed job.
+9. Delete finished snapshots with `zapier-platform delete:version 0.0.0-<label>`. Zapier refuses while any Zap uses that version, so switch the test Zap to another version first, as in step 8.
 
 Test Audio on `https://cdn.speechischeap.com/`:
 
